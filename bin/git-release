@@ -1,0 +1,816 @@
+#!/usr/bin/env node
+
+"use strict";
+let exec = require('child_process').exec;
+let readline = require('readline');
+let https = require('https');
+let validBranches = ['master'];
+let fs = require('fs');
+
+
+let inputs = {
+
+    release_type: process.argv[2],
+    tag: '',
+    description: '',
+    errors: {}
+}
+
+
+
+
+//used for prompts
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+
+//main
+
+
+
+validateInputs(inputs);
+
+
+
+
+//end main
+
+//modular objects;
+
+let api_options = {
+    hostname: 'api.github.com',
+    port: 443,
+    path: '',
+    method: '',
+    headers: {
+        'Authorization': 'token 1d50d956a6385a7d514045c9c1cc081be04278f1', // see Mike for github token
+        'User-Agent': 'node/4.4.5',
+        'Accept': '*/*'
+
+
+    }
+
+};
+
+//store this object in the 'pass thru' object for promise chaining
+
+inputs.api_options = api_options;
+
+
+
+
+//functions
+/*
+ * Displays usage.. not in use
+ *
+ *
+ */
+
+function usage() {
+
+    console.log('\n\n Git Extension for gitHub API releases. \n\n Usage:  \n\n git release [release type] \n\n \tOptions:\n\n \t major: \t version when you make incompatible API changes \n\n \t minor: \t version when you add functionality in a backwards-compatible manner \n\n \t patch: \t version when you make backwards-compatible bug fixes \n\n ');
+
+}
+/*
+ * Get the latest release for this github repo.
+ * :GET /repos/:owner/:repo/releases/latest
+ *
+ * returns current tag and next release tag
+ */
+
+function getLastReleaseTag(inputs) {
+
+
+    return new Promise((resolve, reject) => {
+
+        inputs.api_options.path = '/repos/CardCashLLC/' + inputs.repoName + '/releases';
+        inputs.api_options.method = 'GET';
+        inputs.api_options.headers['Content-Length'] = 0;
+        //inputs.api_options.headers['Content-Length'] = Buffer.byteLength(JSON.stringify(inputs.release_info));
+
+        let resBody = '';
+        let req = https.request(inputs.api_options, (res) => {
+
+
+            res.setEncoding('utf8');
+
+            res.on('data', (data) => {
+                resBody += data;
+            });
+            res.on('error', (err) => {
+
+                reject(err);
+            });
+            res.on('end', () => {
+
+
+
+
+                let responseBody;
+
+                try {
+                    responseBody = JSON.parse(resBody);
+                } catch (e) {
+                    console.log('Error parsing response from Github', e);
+                    reject(e);
+                }
+
+
+                let lv = (typeof responseBody === 'object' && responseBody.length === 0) ? 'v0.0.0' : responseBody[0].tag_name;
+
+                let semver = lv.match(/([A-z]+)?(\d+)(\.)(\d+)(\.)(\d+)/);
+                let patch = 0;
+                let minor = 0;
+                let major = 0;
+
+
+                try {
+
+                    //reset patch on minor and major (minor and patch)
+                    patch = Number.parseInt(semver[6]);
+                    minor = Number.parseInt(semver[4]);
+                    major = Number.parseInt(semver[2]);
+
+                    if (inputs.release_type === 'patch') patch += 1;
+                    if (inputs.release_type === 'minor') {
+                        minor += 1;
+                        patch = 0;
+                    }
+                    if (inputs.release_type === 'major') {
+                        major += 1;
+                        minor = 0;
+                        patch = 0;
+                    }
+
+                } catch (err) {
+                    reject('Error parsing semantic version segments from last tag. Make sure last release is a valid tag on gitHub.');
+
+                }
+
+
+
+
+                inputs.latest_release_tag = lv;
+                inputs.next_release_tag = 'v' + major + '.' + minor + '.' + patch;
+
+                resolve(inputs);
+
+
+            });
+
+        });
+        req.end();
+    });
+
+
+}
+
+/*
+ * Get the latest local tag for this repo.
+ * @inputs passthru object holding state
+ *
+ * returns current tag and next local tag
+ */
+
+function getLatestLocalTag(inputs) {
+
+
+    return new Promise((resolve, reject) => {
+
+        exec('git tag --list', (err, stdout, stderr) => {
+
+            if (err || stderr) {
+                console.log('Error getting local git tags.');
+                reject(err)
+            } else {
+
+                let tags = stdout.match(/(v\d+\.\d+\.\d+)/g);
+                if (tags === null) tags = ['v0.0.0'];
+
+
+                let semver = tags[tags.length - 1].match(/^v(\d+)\.(\d+)\.(\d+)/);
+                if (semver) {
+
+                    let patch = semver[3];
+                    let minor = semver[2];
+                    let major = semver[1];
+
+                    inputs.latest_local_tags = tags;
+
+                    inputs.local_patch_tag = Number.parseInt(patch);
+                    inputs.local_minor_tag = Number.parseInt(minor);
+                    inputs.local_major_tag = Number.parseInt(major);
+                } else {
+
+                    reject('Your tagging format does not follow Semantic Versioning. Please use format: \n\n vX.Y.Z | X,Y,Z => [0,+inf]')
+                }
+
+
+
+
+                resolve(inputs)
+
+            }
+
+
+        })
+
+
+
+    })
+
+
+}
+
+/*
+ * Normalize local and remote tags to avoid collisions
+ *
+ * returns specifies whether tags local and remote diverge and also what they are next
+ */
+
+function compareAndNormalizeLocalAndRemoteTags(inputs) {
+
+    // if this is true, that means a 'tag exists' error will occcur so handle it.
+    if (inputs.latest_local_tags.indexOf(inputs.next_release_tag) > -1) {
+
+        console.log('The local tag on your machine already exists on github. Please compare and realign your local tags and github tags to reflect a monotonic order. Then rerun this script.')
+        process.exit();
+
+
+
+
+    } else {
+
+        console.log('Local and remote tags in lock step..continuing')
+        //tags are already chronologically specified, we good..continue
+        inputs.tags_3o = false;
+
+    }
+
+    return inputs;
+
+
+
+
+}
+
+/*
+ * Post this release to github
+ *
+ * returns Response Body of request
+ */
+
+function postRelease(inputs) {
+
+    return new Promise((resolve, reject) => {
+
+        console.log('releasing to git hub...');
+
+
+        inputs.api_options.path = '/repos/CardCashLLC/' + inputs.repoName + '/releases';
+        inputs.api_options.method = 'POST';
+        inputs.api_options.headers['Content-Length'] = Buffer.byteLength(JSON.stringify(inputs.release_info));
+
+
+
+        let resBody = '';
+        let post_req = https.request(inputs.api_options, (res) => {
+
+
+            res.setEncoding('utf8');
+            if (res.headers.status !== '201 Created') {
+                console.log('ERROR CREATING RELEASE');
+                console.log(res.headers.status);
+                console.log(res.body);
+                reject(res.body);
+            }
+            res.on('data', (data) => {
+                resBody += data;
+            });
+            res.on('error', (err) => {
+                console.log('Error releasing tag to github..', err);
+                reject(err);
+            });
+            res.on('end', () => {
+                console.log('Tag released to git hub...');
+                let result;
+                try {
+                    result = JSON.parse(resBody);
+
+                } catch (e) {
+                    console.log('Error getting response from Github when releaseing');
+                    reject(e);
+
+                }
+
+                //otherwise resolve the result from the call
+                if (result) {
+                    resolve(result);
+                }
+            });
+
+        });
+
+
+        post_req.write(JSON.stringify(inputs.release_info));
+        post_req.end();
+
+    });
+}
+
+/*
+ * tag and push tag to the remote
+ *
+ * returns inputs pass thru
+ */
+
+function tagAndPushChanges(inputs) {
+
+
+    return new Promise((resolve, reject) => {
+        inputs.errors.tagPushResult = {};
+        let local_tag;
+        if (inputs.tags_3o === true) local_tag = inputs.next_local_tag;
+        else {
+            local_tag = inputs.next_release_tag
+        }
+        exec('git tag -a ' + local_tag + ' -m "' + inputs.description + '"  && git push ', (err, stdout, stderr) => {
+
+            if (err) {
+                inputs.errors.tagPushResult.err = err;
+                inputs.errors.tagPushResult.stderr = stderr;
+                reject(inputs);
+            }
+
+            resolve(inputs);
+
+        });
+    });
+
+}
+
+
+/*
+ * Get the git repo name
+ *
+ * returns local git repo name
+ */
+
+function getRepoName(inputs) {
+
+    return new Promise((resolve, reject) => {
+        inputs.errors.getRepoName = {};
+        exec('basename $(git rev-parse --show-toplevel)', (err, stdout, stderr) => {
+            if (err || stderr) {
+                inputs.errors.getRepoName.err = err;
+                inputs.errors.getRepoName.stderr = stderr;
+                reject(inputs);
+            }
+            inputs.repoName = stdout.trim();
+            resolve(inputs);
+        });
+
+    });
+
+
+}
+
+// get branch name..stuff it in release details obj at bottom
+function getBranchName(inputs) {
+
+    return new Promise((resolve, reject) => {
+        exec('git rev-parse --abbrev-ref HEAD', (err, stdout, stderr) => {
+
+            //git rev-parse --abbrev-ref HEAD
+            if (err || stderr) {
+                inputs.errors.getBranch.err = err;
+                inputs.errors.getBranch.stderr = err;
+                reject(inputs);
+            }
+
+            inputs.branchToReleaseOn = stdout.trim();
+            resolve(inputs)
+
+
+
+
+        })
+
+    })
+
+}
+
+/*
+ * Dynamically generate the release comment from the last commit message
+ *
+ * returns Release description as last commit message
+ */
+
+function createReleaseComment(inputs) {
+
+
+    return new Promise((resolve, reject) => {
+        exec('git log -1 --pretty=%B', (err, stdout, stderr) => {
+
+            if (err || stderr) {
+                console.log('Error getting last commit message.');
+                reject(err || stderr);
+            } else {
+                inputs.description = stdout;
+                resolve(inputs);
+            }
+
+        })
+
+    });
+
+}
+
+/*
+ * Validate the command line args for release type
+ *
+ *
+ * returns Validates provided inputs
+ */
+
+function validateInputs(inputs) {
+
+
+
+    let validReleaseTypes = ['major', 'minor', 'patch'];
+    let caseInsensitiveInput = inputs.release_type ? inputs.release_type.toLowerCase() : undefined;
+    let validRelease = validReleaseTypes.indexOf(caseInsensitiveInput) > -1 ? true : false;
+
+    if (validRelease) {
+
+        console.log('Releasing...');
+        release(inputs).then((val) => {
+            rl.close();
+        });
+
+
+    } else {
+
+        let malformedInput = {}
+
+
+
+        malformedInput.type = 'release_type';
+        malformedInput.value = inputs.release_type;
+        inputs.malformedInput = malformedInput;
+        promptForValidInput(inputs);
+
+
+
+    }
+
+
+
+
+}
+
+/*
+ * Create microservice folder on secure s3 if microservice has not been released ever before
+ *
+ *
+ * returns inputs passthru object
+ */
+
+function createContainerVarsFolderOnS3(inputs) {
+
+
+    return new Promise((resolve, reject) => {
+        console.log('Pushing Definitions file to secure S3...')
+        exec('curl -I -L -XPUT -H "Content-Length: 0" https://cc-continuous-delivery.s3.amazonaws.com/microservice-env-vars/' + inputs.repoName + '/', (err, stdout, stderr) => {
+
+            if (err) {
+                console.log('Error creating microservice env vars folder on S3', err);
+                reject(err);
+            } else {
+
+                if (stdout.indexOf('200 OK') > -1) {
+                    console.log('Pushed Definitions to secure S3.');
+                    resolve(inputs);
+                }
+            }
+
+
+        });
+
+    });
+
+}
+
+/*
+ * Verify existence of ImplementorDefinitions.json file in root of repo
+ *
+ * returns inputs passthru object with file size for post to S3
+ */
+
+
+function statImplementorDefinitionsFile(inputs) {
+
+    return new Promise((resolve, reject) => {
+
+        fs.stat(process.cwd() + '/ImplementorDefinitions.json', (err, data) => {
+
+            if (err) {
+
+                console.log('Error checking existence of ImplementorDefinitions.json file: ', err)
+                if (err.code === 'ENOENT') {
+                    console.log('You must create the ImplementorDefinitions.json file in ' + process.cwd());
+                    reject(err);
+                }
+
+
+            } else if (data) {
+                console.log('Found Defintions File...')
+                inputs.implementorDefinitionsFileSize = data['size'];
+                resolve(inputs);
+
+            }
+
+
+        })
+
+
+    })
+
+
+}
+
+/*
+ * Parse the ImplementorDefinitions.json files for container definitions
+ *
+ * returns inputs passthru object with JSON of ImplementorDefinitions.json
+ */
+
+function readContainerVarsFile(inputs) {
+
+
+    return new Promise((resolve, reject) => {
+
+        fs.readFile(process.cwd() + '/ImplementorDefinitions.json', (err, data) => {
+
+            if (err) {
+                reject(err);
+                console.log('Error reading ImplementorDefinitions.json file.  Does it exist?');
+            }
+
+            console.log('Parsing ImplementorDefinitions file.... ');
+
+            let implementorDefinitionsObject;
+
+            try {
+
+                implementorDefinitionsObject = JSON.parse(data.toString());
+                let envIsValid = implementorDefinitionsObject.vars.environment.reduce((prev, curr) => {
+                    return typeof curr.value === 'string';
+                })
+                //validate the environment variables
+                if (envIsValid === false) throw Error('Invalid Environment Variable type.  Must be string.')
+                inputs.implementorDefinitions = implementorDefinitionsObject;
+
+
+
+            } catch (e) {
+                console.log('Error parsing the Implementor Definitions File')
+                reject(e);
+
+            }
+
+
+            resolve(inputs);
+
+        });
+
+
+
+    });
+
+}
+
+/*
+ * Add ImplementorDefinitions.json to gitignore file
+ *
+ * returns inputs passthru object
+ */
+
+
+function gitIgnoreImplementorDefintionsFile(inputs) {
+
+    return new Promise((resolve, reject) => {
+
+
+        fs.readFile(process.cwd() + '/.gitignore', 'utf8', (err, data) => {
+
+            if (err) {
+                console.log('Error reading gitignore file.', err);
+                reject(err)
+            }
+
+            //if the file is already included there, then ignore it. If not, add it to git ignore.
+            if (data.indexOf('ImplementorDefinitions.json') < 0) {
+
+                //append ImplementorDefinitions.json to gitignore
+                fs.appendFile(process.cwd() + '/.gitignore', 'ImplementorDefinitions.json', (err) => {
+                    if (err) reject(err);
+                    resolve(inputs);
+                });
+
+
+            } else {
+                console.log('Adding Defintions file to .gitignore')
+                resolve(inputs);
+
+            }
+
+
+
+
+        })
+
+
+
+    })
+
+
+
+}
+
+/*
+ * Remove any previous commits that included ImplementorDefinitions.json
+ *
+ * returns inputs passthru object
+ */
+
+function verifyImplementorDefintionsIsgitIgnored(inputs) {
+
+    return new Promise((resolve, reject) => {
+        exec('git rm --cached ' + process.cwd() + '/ImplementorDefinitions.json', (err, stdout, stderr) => {
+
+            if (err) {
+
+                if (stderr.indexOf('did not match any files') > -1) {
+                    resolve(inputs);
+                } else {
+                    console.log('Could not de-cache ImplementorDefinitions.json from git.  Process');
+                    reject(err);
+                }
+            } else {
+                console.log('Verifying Defintions file is git ignored.')
+                resolve(inputs);
+
+            }
+
+
+        })
+    })
+
+
+}
+
+/*
+ * Push ImplementorDefinitions.json to secure S3
+ *
+ * returns inputs passthru object
+ */
+
+function pushContainerVarsToS3(inputs) {
+
+    return new Promise((resolve, reject) => {
+
+
+
+        exec('curl -I -L -s -XPUT -H "Content-Length: ' + inputs.implementorDefinitionsFileSize + '" -T "' + process.cwd() + '/ImplementorDefinitions.json" https://cc-continuous-delivery.s3.amazonaws.com/microservice-env-vars/' + inputs.repoName + '/ImplementorDefinitions.json', (err, stdout, stderr) => {
+
+            if (err) {
+                console.log('Error pushing definitions to S3', err);
+                reject(err);
+            } else {
+                if (stdout.indexOf('200 OK') > -1) resolve(inputs);
+            }
+
+
+        });
+
+    })
+
+
+}
+
+/*
+ * Prompt user when an invalid input has been provided
+ *
+ * returns void
+ */
+
+function promptForValidInput(inputs) {
+
+
+    let prompts = {
+        tag: 'tag \n\n Tag Format: \t v[Major.Minor.Patch] \n\n Example: v5.23.82 \n\n Last input: ' + inputs.malformedInput.value + '\n\n Enter a tag: ',
+        branch: 'branch. \n\n Available branches: ' + validBranches.toString() + ' \n\n Last input: ' + inputs.malformedInput.value + ' \n\n Enter a branch: ',
+        release_type: 'release type. \n\n Valid release types follow semantic versioning and have the following options: \n\n major: version when you make incompatible API changes \n\n minor: version when you add functionality in a backwards-compatible manner \n\n patch: version when you make backwards-compatible bug fixes.\n\n enter type: '
+    }
+    rl.question('\n\n Please enter a valid ' + prompts[inputs.malformedInput.type], (answer) => {
+
+        inputs[inputs.malformedInput.type] = answer;
+
+        validateInputs(inputs);
+
+    });
+
+
+
+}
+
+/*
+ * Validates the branch..not in use
+ * @branch:  Branch to validate
+ * returns validity of branch
+ */
+function validateBranch(branch) {
+
+    //Not in use..in the future this will check the branch via git command against an 'allowed' set of deployable branches
+
+
+    return validBranches.indexOf(branch) !== -1;
+
+
+
+
+}
+
+/*
+ * Create the object that GitHub expects on the API create release method
+ *
+ * returns inputs passthru object
+ */
+function buildMeta(inputs) {
+
+
+    let tag = inputs.next_release_tag;
+
+    inputs.release_info = {
+        tag_name: tag,
+        target_commitish: inputs.branchToReleaseOn,
+        name: tag,
+        body: 'Released to dev: ' + inputs.description,
+        draft: false,
+        prerelease: false
+
+    };
+
+    return inputs;
+
+
+}
+
+/*
+ * TODO: Release a hotfix on any tag
+ *
+ *
+ *
+ */
+
+
+
+
+/*
+ * Carries out the above methods and returns a promise chain
+ *
+ * returns success or error
+ */
+
+function release(inputs) {
+
+
+    return getRepoName(inputs)
+        .then(getLastReleaseTag)
+        .then(getLatestLocalTag)
+        .then(compareAndNormalizeLocalAndRemoteTags)
+        .then(createReleaseComment)
+        .then(getBranchName)
+        .then(buildMeta)
+        .then(statImplementorDefinitionsFile)
+        .then(readContainerVarsFile)
+        .then(createContainerVarsFolderOnS3)
+        .then(pushContainerVarsToS3)
+        .then(gitIgnoreImplementorDefintionsFile)
+        .then(verifyImplementorDefintionsIsgitIgnored)
+        .then(tagAndPushChanges)
+        .then(postRelease)
+        .then((response) => {
+            console.log('Released:  tag: ', response.tag_name, ' branch: ', response.target_commitish);
+        }).catch((err) => {
+
+            console.log('Error occurred during release: ', err, err.stack);
+        });
+
+
+
+}
