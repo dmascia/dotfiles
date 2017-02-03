@@ -2,7 +2,7 @@
 # don't run it.
   echo "do not run this script in one go. hit ctrl-c NOW"
   read -n 1
-  
+
 ##############################################################################################################
 ### XCode Command Line Tools
 #      thx https://github.com/alrra/dotfiles/blob/ff123ca9b9b/os/os_x/installs/install_xcode.sh
@@ -60,10 +60,6 @@ export PATH=$HOME/.homebrew/bin:$HOME/.homebrew/sbin:$PATH
 ##############################################################################################################
 ### install of common things
 ###
-
-# github.com/jamiew/git-friendly
-# the `push` command which copies the github compare URL to my clipboard is heaven
-bash < <( curl https://raw.github.com/jamiew/git-friendly/master/install.sh)
 
 
 # Type `git open` to open the GitHub page or website for a repository.
