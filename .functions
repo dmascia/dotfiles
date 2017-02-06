@@ -244,3 +244,9 @@ function o() {
 function tre() {
 	tree -aC -I '.git|node_modules|bower_components' --dirsfirst "$@" | less -FRNX;
 }
+
+
+# fix for "The local tag on your machine already exists on github. Please compare and realign your local tags and github tags to reflect a monotonic order. Then rerun this script."
+function repairGitTags() {
+	git fetch --tags && git tag -l | xargs git tag -d
+}
