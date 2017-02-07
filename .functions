@@ -250,3 +250,8 @@ function tre() {
 function repairGitTags() {
 	git fetch --tags && git tag -l | xargs git tag -d
 }
+
+#Docker remove <none> TAG images
+function removeDockerNC() {
+	docker rmi $(docker images -a -q)
+}
