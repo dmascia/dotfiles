@@ -255,3 +255,10 @@ function repairGitTags() {
 function removeDockerNC() {
 	docker rmi $(docker images -a -q)
 }
+
+#removes all local and remote git branches except master branch
+function removeAllBranches() {
+	git fetch -p origin
+	git branch | grep -v master | sed 's/origin\//:/' | xargs git branch -D
+	git branch -r | grep -v master | sed 's/origin\//:/' | xargs git push origin
+}
