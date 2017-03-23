@@ -262,3 +262,27 @@ function removeAllBranches() {
 	git branch | grep -v master | sed 's/origin\//:/' | xargs git branch -D
 	git branch -r | grep -v master | sed 's/origin\//:/' | xargs git push origin
 }
+
+buildMasterDockerContainers() {
+	for dir in `find . -maxdepth 1 -type d \( ! -name . \) -exec bash -c "cd '{}' && pwd | grep -o '[^/]*$'" \;`;
+	do (cd $dir && ECHO $dir && git pull && git checkout master && git pull origin master && npm update && docker build -t $dir .); done
+}
+
+buildDockerContainers() {
+	for dir in `find . -maxdepth 1 -type d \( ! -name . \) -exec bash -c "cd '{}' && pwd | grep -o '[^/]*$'" \;`;
+	do (cd $dir && ECHO $dir && git pull && npm update && docker build -t $dir .); done
+
+#Delete all untagged images
+function removeUntaggedImages() {
+	docker rmi $(docker images | grep "^<none>" | awk '{print $3}')
+}
+
+#Delete all containers
+function removeAllContainers() {
+	docker ps -q -a | xargs docker rm
+}
+
+#Delete all dangling images
+function removeDanglingImages() {
+	docker rmi $(docker images -q -f dangling=true)
+}
