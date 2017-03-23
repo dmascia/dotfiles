@@ -13,7 +13,6 @@ brew tap caskroom/versions
 # daily
 brew cask install lastpass
 
-
 # dev
 brew cask install iterm2
 brew cask install sublime-text
