@@ -1,11 +1,11 @@
 
 # Add `~/bin` to the `$PATH`
-export PATH="$HOME/bin:/usr/local/sbin:$PATH";
+export PATH="$HOME/bin:/usr/local/sbin:$PATH:$HOME/.homebrew/bin:$HOME/.homebrew/sbin";
 
 # Load the shell dotfiles, and then some:
 # * ~/.path can be used to extend `$PATH`.
 # * ~/.extra can be used for other settings you don’t want to commit.
-for file in ~/.{path,bash_prompt,exports,aliases,functions/}; do
+for file in ~/.{path,exports,aliases,functions/}; do
 	[ -r "$file" ] && [ -f "$file" ] && source "$file";
 done;
 unset file;
@@ -13,6 +13,8 @@ unset file;
 
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+if [ "$0" = "/bin/bash" ]; then
 
 # Case-insensitive globbing (used in pathname expansion)
 shopt -s nocaseglob;
@@ -23,6 +25,22 @@ shopt -s histappend;
 # Autocorrect typos in path names when using `cd`
 shopt -s cdspell;
 
+for file in ~/.{bash_prompt/}; do
+	[ -r "$file" ] && [ -f "$file" ] && source "$file";
+done;
+unset file;
+
+# Enable some Bash 4 features when possible:
+# * `autocd`, e.g. `**/qux` will enter `./foo/bar/baz/qux`
+# * Recursive globbing, e.g. `echo **/*.txt`
+for option in autocd globstar; do
+	shopt -s "$option" 2> /dev/null;
+done;
+
+type shopt &> /dev/null && shopt -s histappend  # append to history, don't overwrite it
+# Save multi-line commands as one command
+shopt -s cmdhist
+fi
 # bash completion.
 if [ -f /etc/bash_completion ]; then
     source /etc/bash_completion;
@@ -37,12 +55,7 @@ fi;
 if type __git_complete &> /dev/null; then
     __git_complete g __git_main
 fi;
-# Enable some Bash 4 features when possible:
-# * `autocd`, e.g. `**/qux` will enter `./foo/bar/baz/qux`
-# * Recursive globbing, e.g. `echo **/*.txt`
-for option in autocd globstar; do
-	shopt -s "$option" 2> /dev/null;
-done;
+
 
 # generic colouriser
 GRC=`which grc`
@@ -71,13 +84,11 @@ export HISTTIMEFORMAT='%F %T '
 export HISTCONTROL="erasedups:ignoreboth"       # no duplicate entries
 export HISTSIZE=100000                          # big big history (default is 500)
 export HISTFILESIZE=$HISTSIZE                   # big big history
-type shopt &> /dev/null && shopt -s histappend  # append to history, don't overwrite it
 
 # Don't record some commands
 export HISTIGNORE="&:[ ]*:exit:ls:bg:fg:history:clear"
 
-# Save multi-line commands as one command
-shopt -s cmdhist
+
 
 # Save and reload the history after each command finishes
 export PROMPT_COMMAND="history -a; history -c; history -r; $PROMPT_COMMAND"

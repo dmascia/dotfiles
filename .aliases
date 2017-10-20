@@ -151,3 +151,4 @@ alias reload="exec $SHELL -l"
 
 
 alias dev="cd $HOME/Documents/dev";
+alias m="cd $HOME/Documents/dev/microservices";

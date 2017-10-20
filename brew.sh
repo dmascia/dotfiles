@@ -32,6 +32,12 @@ brew install bash
 brew tap homebrew/versions
 brew install bash-completion2
 
+#zsh
+brew install zsh zsh-completions zsh-history-substring-search 
+
+brew install yarn --without-node
+
+
 brew install docker docker-machine docker-compose
 
 # Install `wget` with IRI support.

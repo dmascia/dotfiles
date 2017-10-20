@@ -1,0 +1,564 @@
+#!/usr/bin/env node
+
+"use strict";
+
+const exec = require('child_process').exec,
+      readline = require('readline'),
+      https = require('https'),
+      validBranches = ['master'],
+      fs = require('fs'),
+      env = process.argv[3],
+      util = require('util'),
+      sitesToBuild = [];
+
+let inputs = {
+      release_type: process.argv[2],
+      tag: '',
+      description: '',
+      errors: {},
+      api_options: {
+        hostname: 'api.github.com',
+        port: 443,
+        path: '',
+        method: '',
+        headers: {
+          'Authorization': 'token 1d82f3e1c170a41b9523ec337f32c83c3d4c51d5', // Create your own github token
+          'User-Agent': 'node/4.4.5',
+          'Accept': '*/*'
+        }
+      }
+    },
+    uiChoices = ['shared'];
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+validateInputs(inputs);
+
+/**
+ * [usage How to use this darn thing]
+ * @return {[String]} [A usage example ]
+ */
+function usage() {
+  console.log('\n\n Git Extension for gitHub API releases. \n\n Usage:  \n\n git release [release type] \n\n \tOptions:\n\n \t major: \t version when you make incompatible API changes \n\n \t minor: \t version when you add functionality in a backwards-compatible manner \n\n \t patch: \t version when you make backwards-compatible bug fixes \n\n ');
+}
+
+/**
+ * [getLastReleaseTag Fetches the latest annotated tag associated with a release on gitHub]
+ * @param  {[object]} inputs [Meta data about the code base and git repo]
+ * @return {[Object]}        [Returns the modidifed or unmodified inputs object as a pass thru]
+ */
+function getLastReleaseTag(inputs) {
+  return new Promise((resolve, reject) => {
+    inputs.api_options.path = '/repos/CardCashLLC/' + inputs.repoName + '/releases';
+    inputs.api_options.method = 'GET';
+    inputs.api_options.headers['Content-Length'] = 0;
+
+    let resBody = '';
+
+    let req = https.request( inputs.api_options, res => {
+      res.setEncoding('utf8');
+
+      res.on('data', data => {
+        resBody += data;
+      });
+
+      res.on('error', err => {
+
+        reject(err);
+      });
+
+      res.on('end', () => {
+        let responseBody;
+
+        try {
+          responseBody = JSON.parse(resBody);
+        } catch (e) {
+          console.log('Error parsing response from Github', e);
+          reject(e);
+        }
+
+        let lv = (typeof responseBody === 'object' && responseBody.length === 0) ? 'v0.0.0' : responseBody[0].tag_name,
+            semver = lv.match(/([A-z]+)?(\d+)(\.)(\d+)(\.)(\d+)/),
+            patch = 0,
+            minor = 0,
+            major = 0;
+
+        try {
+          //reset patch on minor and major (minor and patch)
+          patch = Number.parseInt(semver[6]);
+          minor = Number.parseInt(semver[4]);
+          major = Number.parseInt(semver[2]);
+
+          if (inputs.release_type === 'patch') {
+            patch += 1;
+          }
+
+          if (inputs.release_type === 'minor') {
+            minor += 1;
+            patch = 0;
+          }
+
+          if (inputs.release_type === 'major') {
+            major += 1;
+            minor = 0;
+            patch = 0;
+          }
+        } catch (err) {
+          reject('Error parsing semantic version segments from last tag. Make sure last release is a valid tag on gitHub.');
+
+        }
+
+        inputs.latest_release_tag = lv;
+        inputs.next_release_tag = 'v' + major + '.' + minor + '.' + patch;
+        resolve(inputs);
+      });
+    });
+
+    req.end();
+  });
+}
+
+/**
+ * [getLatestLocalTag Parses the latest annotated tag from the local git repo ]
+ * @param  {[Object]} inputs [Meta data about the code base and git repo]
+ * @return {[object]}        [Returns the modidifed or unmodified inputs object as a pass thru]
+ */
+function getLatestLocalTag(inputs) {
+  return new Promise((resolve, reject) => {
+    exec('git tag --list', (err, stdout, stderr) => {
+      if (err || stderr) {
+        console.log('Error getting local git tags.');
+        reject(err);
+      } else {
+
+        let tags = stdout.match(/(v\d+\.\d+\.\d+)/g);
+
+        if (tags === null) {
+          tags = ['v0.0.0'];
+        }
+
+        let semver = tags[tags.length - 1].match(/^v(\d+)\.(\d+)\.(\d+)/);
+
+        if (semver) {
+          let patch = semver[3];
+          let minor = semver[2];
+          let major = semver[1];
+
+          inputs.latest_local_tags = tags;
+          inputs.local_patch_tag = Number.parseInt(patch);
+          inputs.local_minor_tag = Number.parseInt(minor);
+          inputs.local_major_tag = Number.parseInt(major);
+        } else {
+          reject('Your tagging format does not follow Semantic Versioning. Please use format: \n\n vX.Y.Z | X,Y,Z => [0,+inf]');
+        }
+
+        resolve(inputs);
+      }
+    });
+  });
+}
+
+/**
+ * [compareAndNormalizeLocalAndRemoteTags Compares local annotated tags to remote (github) tags and continues or notifies developer of out-of-sync issues ]
+ * @param  {[Object]} inputs [Meta data about the code base and git repo]
+ * @return {[Object]}        [Returns the modidifed or unmodified inputs object as a pass thru]
+ */
+function compareAndNormalizeLocalAndRemoteTags(inputs) {
+  let local_tag = inputs.latest_local_tags[inputs.latest_local_tags.length - 1],
+      next_release = inputs.next_release_tag;
+
+  // if this is true, that means a 'tag exists' error will occcur so handle it.
+  if (inputs.latest_local_tags.indexOf(inputs.next_release_tag) > -1) {
+    console.log('The next local tag (' + next_release + ') about to be created on your machine already exists on github. Please compare and realign your local tags and github tags to a monotonic order. Then rerun this script.');
+    console.log('Hint:  \n\n To view tags locally use: git tag --list \n\n To delete a local tag use:  git tag -d $tag_name\n\n');
+    process.exit();
+  } else {
+    inputs.tags_3o = false;
+  }
+
+  return inputs;
+}
+
+/**
+ * [postRelease Posts a 'Release' object to gitHub's api which corresponds to a particular tag and commit]
+ * @param  {[object]} inputs [Meta data about the code base and git repo]
+ * @return {[object]}        [Returns the modidifed or unmodified inputs object as a pass thru]
+ */
+function postRelease(inputs) {
+  return new Promise((resolve, reject) => {
+    inputs.api_options.path = '/repos/CardCashLLC/' + inputs.repoName + '/releases';
+    inputs.api_options.method = 'POST';
+    inputs.api_options.headers['Content-Length'] = Buffer.byteLength(JSON.stringify(inputs.release_info));
+
+    let resBody = '';
+    let post_req = https.request(inputs.api_options, res => {
+      res.setEncoding('utf8');
+
+      if (res.headers.status !== '201 Created') {
+        console.log('ERROR CREATING RELEASE');
+        console.log(res.headers.status);
+        console.log(res.body);
+        reject(res.body);
+      }
+
+      res.on('data', data => {
+        resBody += data;
+      });
+
+      res.on('error', err => {
+        console.log('Error releasing tag to github..', err);
+        reject(err);
+      });
+
+      res.on('end', () => {
+        let result;
+
+        try {
+          result = JSON.parse(resBody);
+        } catch (e) {
+          console.log('Error getting response from Github when releaseing');
+          reject(e);
+        }
+
+        //otherwise resolve the result from the call
+        if (result) {
+          resolve(result);
+        }
+      });
+    });
+
+    post_req.write(JSON.stringify(inputs.release_info));
+    post_req.end();
+  });
+}
+
+/**
+ * [tagAndPushChanges Creates an annotated tag and pushes this tag to gitHub]
+ * @param  {[object]} inputs [Meta data about the code base and git repo]
+ * @return {[Object]}        [Returns the modidifed or unmodified inputs object as a pass thru]
+ */
+function tagAndPushChanges(inputs) {
+  return new Promise((resolve, reject) => {
+    let local_tag;
+
+    if (inputs.tags_3o === true) {
+      local_tag = inputs.next_local_tag;
+    } else {
+      local_tag = inputs.next_release_tag;
+    }
+
+    exec('git tag -a ' + local_tag + ' -m "' + inputs.description + '"  && git push ', (err, stderr) => {
+      if (err) {
+        inputs.errors.tagPushResult = {};
+        inputs.errors.tagPushResult.err = err;
+        inputs.errors.tagPushResult.stderr = stderr;
+        reject(inputs);
+      }
+
+      resolve(inputs);
+    });
+  });
+}
+
+/**
+ * [getRepoName parse the repository name of the current code base]
+ * @param  {[object]} inputs [Meta data about the code base and git repo]
+ * @return {[object]}        [Returns the modidifed or unmodified inputs object as a pass thru]
+ */
+function getRepoName(inputs) {
+  return new Promise((resolve, reject) => {
+    exec('git rev-parse --show-toplevel', (err, stdout, stderr) => {
+      if (err || stderr) {
+        inputs.errors.getRepoName = {};
+        inputs.errors.getRepoName.err = err;
+        inputs.errors.getRepoName.stderr = stderr;
+        reject(inputs);
+      }
+
+      inputs.absoluteRepoPath = stdout;
+      inputs.repoName = stdout.substring(stdout.lastIndexOf('/') + 1).trim();
+
+      resolve(inputs);
+    });
+  });
+}
+
+
+function selectBuildUIs(inputs) {
+  return Promise.all(['consumer', 'partners'].map((category) => {
+    return new Promise((resolve, reject) => {
+      fs.readdir(inputs.absoluteRepoPath + '/' + category, '', function (err, files) {
+        if (err) {
+          reject(err);
+        }
+        else {
+          uiChoices = uiChoices.concat(files);
+          resolve(inputs);
+        }
+      });
+    });
+  }));
+}
+
+function prompUI(inputs) {
+  return new Promise((resolve, reject) => {
+    process.stdin.setEncoding('utf8');
+    process.stdout.write('Enter a UI to build or enter quit \n\n');
+    process.stdin.on('readable', () => {
+      let chunk = process.stdin.read();
+
+      if (chunk !== null) {
+        process.stdout.write(`data: ${chunk}`);
+      }
+    });
+  });
+}
+
+function promptForUIsToBuild(inputs) {
+  return new Promise((resolve, reject) => {
+    inputs = inputs[0];
+    process.stdin.setEncoding('utf8');
+    process.stdout.write('Enter a UI and type done when finished \n\n');
+    process.stdout.write('Enter a UI to build: ');
+    process.stdin.on('readable', () => {
+      let text = process.stdin.read();
+
+      if (text !== null) {
+        let user_input = text.match(/([A-Za-z0-9]\w+)(\.com)?/)[1];
+
+        if (text === 'done\n') {
+          inputs.pushUIs = sitesToBuild;
+          resolve(inputs);
+        } else if (user_input !== null && uiChoices.indexOf(user_input) > -1) {
+          sitesToBuild.push(user_input);
+          process.stdout.write('Enter a UI to build: ');
+        } else if (uiChoices.indexOf(text) < 0) {
+          process.stdout.write(text.substring(0, text.length - 1) + ' is not a valid UI choice \n');
+          process.stdout.write('Enter a UI to build: ');
+        }
+      }
+    });
+  });
+}
+
+
+/**
+ * [getBranchName Parse the currently checked out branch]
+ * @param  {[Object]} inputs [meta data about the code base and the git repo]
+ * @return {[Object]}        [Returns the modidifed or unmodified inputs object as a pass thru]
+ */
+function getBranchName(inputs) {
+  return new Promise((resolve, reject) => {
+    exec('git rev-parse --abbrev-ref HEAD', (err, stdout, stderr) => {
+      if (err || stderr) {
+        inputs.errors.getBranch.err = err;
+        inputs.errors.getBranch.stderr = err;
+        reject(inputs);
+      }
+
+      inputs.branchToReleaseOn = stdout.trim();
+      resolve(inputs)
+    });
+  });
+}
+
+
+/**
+ * [createReleaseComment Creates release comment from last commit message provided.]
+ * @param  {[Object]} inputs [Meta data about the code base and git repo]
+ * @return {[Object]}        [Returns the modidifed or unmodified inputs object as a pass thru]
+ */
+function createReleaseComment(inputs) {
+  return new Promise((resolve, reject) => {
+    exec('git log -1 --pretty=%B', (err, stdout, stderr) => {
+      if (err || stderr) {
+        console.log('Error getting last commit message.');
+        reject(err || stderr);
+      } else {
+        inputs.description = stdout;
+        resolve(inputs);
+      }
+    });
+  });
+}
+
+/**
+ * [validateInputs Validates script arguments passed in from developer]
+ * @param  {[Object]} inputs [Meta data about the code base and git repo]
+ * @return {[Object]}        [Returns the modidifed or unmodified inputs object as a pass thru]
+ */
+function validateInputs(inputs) {
+  let validReleaseTypes = ['major', 'minor', 'patch'],
+    caseInsensitiveInput = inputs.release_type ? inputs.release_type.toLowerCase() : undefined,
+    validRelease = validReleaseTypes.indexOf(caseInsensitiveInput) > -1 ? true : false;
+
+  exec('git rev-parse --show-toplevel', (err, stdout, stderr) => {
+    if (err || stderr) {
+      inputs.errors.getRepoName.err = err;
+      inputs.errors.getRepoName.stderr = stderr;
+      console.log('This is not a git repo. Please check your current working directory. Exiting.');
+      process.exit();
+    }
+
+    inputs.absoluteRepoPath = stdout.substring(0, stdout.length - 1);
+    inputs.repoName = stdout.substring(stdout.lastIndexOf('/') + 1).trim();
+
+    //control logic
+    if (validRelease === true) {
+      switch (inputs.repoName) {
+        case 'partners_react':
+          rl.close();
+          releaseUI(inputs).then((val) => {
+            process.exit(0);
+          });
+          break;
+        default:
+          releaseMicroservice(inputs).then((val) => {
+            rl.close();
+          });
+      }
+    } else {
+      let malformedInput = {};
+
+      malformedInput.type = 'release_type';
+      malformedInput.value = inputs.release_type;
+      inputs.malformedInput = malformedInput;
+      promptForValidInput(inputs);
+    }
+  });
+}
+
+
+/**
+ * [promptForValidInput Like the LSB usage() method. Notifies user of valid arguments]
+ * @param  {[Object]} inputs [Meta daata about the code base and git repo]
+ * @return {[Object]}        [Returns the modidifed or unmodified inputs object as a pass thru]
+ */
+function promptForValidInput(inputs) {
+  let prompts = {
+    tag: 'tag \n\n Tag Format: \t v[Major.Minor.Patch] \n\n Example: v5.23.82 \n\n Last input: ' + inputs.malformedInput.value + '\n\n Enter a tag: ',
+    branch: 'branch. \n\n Available branches: ' + validBranches.toString() + ' \n\n Last input: ' + inputs.malformedInput.value + ' \n\n Enter a branch: ',
+    release_type: 'release type. \n\n Valid release types follow semantic versioning and have the following options: \n\n major: version when you make incompatible API changes \n\n minor: version when you add functionality in a backwards-compatible manner \n\n patch: version when you make backwards-compatible bug fixes.\n\n enter type: '
+  };
+
+  rl.question('\n\n Please enter a valid ' + prompts[inputs.malformedInput.type], answer => {
+    inputs[inputs.malformedInput.type] = answer;
+    validateInputs(inputs);
+  });
+}
+
+/**
+ * [buildMeta Builds meta data about the release to be made on gitHub]
+ * @param  {[Object]} inputs [Various details about the code base and git state]
+ * @return {[Object]}        [Returns the modidifed or unmodified inputs object as a pass thru]
+ */
+function buildMeta(inputs) {
+  let tag = inputs.next_release_tag,
+      release_message = inputs.repoName === 'partners_react' ? 'Pushed UI to Integration: ' + inputs.pushUIs : 'Released to dev: ' + inputs.description;
+
+  inputs.release_info = {
+    tag_name: tag,
+    target_commitish: inputs.branchToReleaseOn,
+    name: tag,
+    body: release_message,
+    draft: false,
+    prerelease: false
+
+  };
+
+  return inputs;
+}
+
+function cleanUpTagAfterReleaseError(inputs) {
+  console.log('Cleaning up local tag after release error...');
+  exec('git tag -d ' + inputs.next_release_tag, (err, stderr, stdout) => {
+    if (err) {
+      console.log('Could not delete tag ', inputs.next_release_tag);
+    }
+
+    console.log('Deleted tag after release error. Exiting');
+    process.exit(1);
+  });
+}
+
+
+/**
+ * [debug This is a debug method used to shim methods above and display what went wrong]
+ * @return {[Object]} [Shim returns stack, function name or line upstream on error]
+ */
+function debug() {
+  Object.defineProperty(global, '__stack', {
+    get: function () {
+      let orig = Error.prepareStackTrace;
+      Error.prepareStackTrace = function (_, stack) {
+        return stack;
+      };
+      let err = new Error;
+      Error.captureStackTrace(err, arguments.callee);
+      let stack = err.stack;
+      Error.prepareStackTrace = orig;
+      return stack;
+    }
+  });
+
+  Object.defineProperty(global, '__line', {
+    get: function () {
+      return __stack[1].getLineNumber();
+    }
+  });
+
+  Object.defineProperty(global, '__function', {
+    get: function () {
+      return __stack[1].getFunctionName();
+    }
+  });
+}
+
+
+/**
+ * [release Tags, commits and creates a release on local git/github respectively.]
+ * @param  {[Object]} inputs [Meta data about the codebase from which this is run]
+ * @return {[String]}        [Description of the results and/or errors]
+ */
+function releaseMicroservice(inputs) {
+  return getRepoName(inputs)
+    .then(getLastReleaseTag)
+    .then(getLatestLocalTag)
+    .then(compareAndNormalizeLocalAndRemoteTags)
+    .then(createReleaseComment)
+    .then(getBranchName)
+    .then(buildMeta)
+    .then(tagAndPushChanges)
+    .then(postRelease)
+    .then(response => {
+      console.log('Released:  tag: ', response.tag_name, ' branch: ', response.target_commitish);
+      console.log('Check the Slack #microservices channel for release confirmation');
+    })
+    .catch(err => {
+      console.log('Error occurred during release: ', err, err.stack);
+    });
+}
+
+
+function releaseUI(inputs) {
+  return getLastReleaseTag(inputs)
+    .then(getLatestLocalTag)
+    .then(compareAndNormalizeLocalAndRemoteTags)
+    .then(createReleaseComment)
+    .then(getBranchName)
+    .then(selectBuildUIs)
+    .then(promptForUIsToBuild)
+    .then(buildMeta)
+    .then(tagAndPushChanges)
+    .then(postRelease)
+    .then((response) => {
+      console.log('Released:  tag: ', response.tag_name, ' branch: ', response.target_commitish);
+    })
+    .catch((err) => {
+      console.log('Error occurred during release: ', err, err.stack);
+      cleanUpTagAfterReleaseError(inputs);
+    });
+}

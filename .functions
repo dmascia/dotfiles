@@ -260,17 +260,17 @@ function removeDockerNC() {
 function removeAllBranches() {
 	git fetch -p origin
 	git branch | grep -v master | sed 's/origin\//:/' | xargs git branch -D
-	git branch -r | grep -v master | sed 's/origin\//:/' | xargs git push origin
+	git branch -r | grep -v master | sed 's/origin\//:/' | xargs git push origin'
 }
-
-buildMasterDockerContainers() {
+function buildMasterDockerContainers() {
 	for dir in `find . -maxdepth 1 -type d \( ! -name . \) -exec bash -c "cd '{}' && pwd | grep -o '[^/]*$'" \;`;
 	do (cd $dir && ECHO $dir && git pull && git checkout master && git pull origin master && npm update && docker build -t $dir .); done
 }
 
-buildDockerContainers() {
+function buildDockerContainers() {
 	for dir in `find . -maxdepth 1 -type d \( ! -name . \) -exec bash -c "cd '{}' && pwd | grep -o '[^/]*$'" \;`;
 	do (cd $dir && ECHO $dir && git pull && npm update && docker build -t $dir .); done
+}
 
 #Delete all untagged images
 function removeUntaggedImages() {
