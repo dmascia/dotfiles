@@ -263,13 +263,35 @@ function removeAllBranches() {
 	git branch -r | grep -v master | sed 's/origin\//:/' | xargs git push origin
 }
 function buildMasterDockerContainers() {
+	npm cache clear --force &&
 	for dir in `find . -maxdepth 1 -type d \( ! -name . \) -exec bash -c "cd '{}' && pwd | grep -o '[^/]*$'" \;`;
-	do (cd $dir && ECHO $dir && git pull && git checkout master && git pull origin master && npm update && docker build -t $dir .); done
+	do (
+		cd $dir &&
+		ECHO $dir &&
+		git checkout master &&
+		git pull origin master &&
+		rm -rf /node_modules &&
+		rm -rf package-lock.json &&
+		npm install &&
+		npm update &&
+		docker build -t $dir:l .
+	); done
 }
 
 function buildDockerContainers() {
 	for dir in `find . -maxdepth 1 -type d \( ! -name . \) -exec bash -c "cd '{}' && pwd | grep -o '[^/]*$'" \;`;
-	do (cd $dir && ECHO $dir && git pull && npm update && docker build -t $dir .); done
+	do (
+		cd $dir &&
+		ECHO $dir &&
+		git checkout master &&
+		git pull origin master &&
+		rm -rf /node_modules &&
+		rm -rf package-lock.json &&
+		npm cache clear --force &&
+		npm install &&
+		npm update &&
+		docker build -t $dir:l .
+	); done
 }
 
 #Delete all untagged images
@@ -285,4 +307,37 @@ function removeAllContainers() {
 #Delete all dangling images
 function removeDanglingImages() {
 	docker rmi $(docker images -q -f dangling=true)
+}
+
+function stopAllContainers() {
+	docker stop $(docker ps -a -q)
+}
+
+function syncDatabaseLib() {
+	echo "---rsync---> database_lib/"
+	rsync -ah  --progress  --ignore-times "/Users/davemascia/Documents/dev/database_lib/" "./node_modules/database_lib/" --exclude .git --exclude .gitignore --exclude .DS_Store --exclude test --exclude '*.md' --exclude .idea
+}
+
+function syncQueueLib() {
+	echo "---rsync---> queue_lib/"
+	rsync -ah  --progress  --ignore-times "/Users/davemascia/Documents/dev/queue_lib/" "./node_modules/QueueLib/" --exclude .git --exclude .gitignore --exclude .DS_Store --exclude test --exclude '*.md' --exclude ManualTest --exclude 'classDesign*' --exclude 'seqDiag*'  --exclude .idea
+}
+
+function syncCommonLib() {
+	echo "---rsync---> common_lib/"
+	rsync -ah  --progress --ignore-times "/Users/davemascia/Documents/dev/common_lib/" "./node_modules/common_lib/" --exclude .git --exclude .gitignore --exclude .DS_Store --exclude test --exclude '*.md' --exclude .idea
+}
+
+function syncMessageContractLib() {
+	echo "---rsync---> message_contract_lib/"
+	rsync -ah  --progress  --ignore-times "/Users/davemascia/Documents/dev/message_contract_lib/" "./node_modules/message_contract_lib/" --exclude .git --exclude .gitignore --exclude .DS_Store --exclude test --exclude '*.md' --exclude .idea
+}
+
+function syncServiceFramework() {
+	echo "---rsync---> ccservice-framework/"
+	rsync -ah  --progress --ignore-times "/Users/davemascia/Documents/dev/ccservice-framework/" "./node_modules/ccservice-framework/" --exclude .git --exclude .gitignore --exclude .DS_Store --exclude test --exclude '*.md' --exclude .idea
+}
+
+function getTags() {
+	git for-each-ref --sort=taggerdate --format '%(refname) %(taggerdate)' refs/tags
 }
