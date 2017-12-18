@@ -13,4 +13,3 @@ leizongmin.node-module-intellisense
 lukehoban.Go
 mohsen1.prettify-json
 ms-mssql.mssql
-xabikos.JavaScriptSnippet

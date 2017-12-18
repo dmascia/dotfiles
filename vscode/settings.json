@@ -1,6 +1,5 @@
 {
     "workbench.colorTheme": "Atom One Dark",
-    "jshint.config": ".jshintrc",
     "files.autoSave": "onFocusChange",
     "editor.renderWhitespace": "all",
     "workbench.sideBar.location": "left",
@@ -11,8 +10,8 @@
     "editor.fontSize": 14,
     "editor.cursorStyle": "block",
     "editor.tabSize": 4,
-    "workbench.startupEditor": "newUntitledFile",
+    "workbench.startupEditor": "none",
     "window.zoomLevel": 0,
     "editor.formatOnSave": true,
-    "beautify.config": "~/.jsbeautifyrc"
+    "eslint.autoFixOnSave": true
 }

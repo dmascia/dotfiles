@@ -50,6 +50,8 @@ fi
 mkdir $HOME/.homebrew && curl -L https://github.com/mxcl/homebrew/tarball/master | tar xz --strip 1 -C $HOME/.homebrew
 export PATH=$HOME/.homebrew/bin:$HOME/.homebrew/sbin:$PATH
 
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+
 # install all the things
 ./brew.sh
 ./brew-cask.sh
@@ -57,22 +59,6 @@ export PATH=$HOME/.homebrew/bin:$HOME/.homebrew/sbin:$PATH
 ### end of homebrew
 ##############################################################################################################
 
-##############################################################################################################
-### install of common things
-###
-
-
-# Type `git open` to open the GitHub page or website for a repository.
-npm install -g git-open
-
-# fancy listing of recent branches
-npm install -g git-recent
-
-# sexy git diffs
-npm install -g diff-so-fancy
-
-# trash as the safe `rm` alternative
-npm install --global trash-cli
 
 # install better nanorc config
 # https://github.com/scopatz/nanorc
@@ -89,6 +75,20 @@ echo $BASH_VERSION # should be 4.x not the old 3.2.X
 
 #https://github.com/creationix/nvm nvm install
 curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.0/install.sh | bash
+
+nvm alias default lts/*
+
+# Type `git open` to open the GitHub page or website for a repository.
+npm install -g git-open
+
+# fancy listing of recent branches
+npm install -g git-recent
+
+# sexy git diffs
+npm install -g diff-so-fancy
+
+# trash as the safe `rm` alternative
+npm install --global trash-cli
 
 # iterm with more margin! http://hackr.it/articles/prettier-gutter-in-iterm-2/
 #   (admittedly not as easy to maintain)
@@ -117,7 +117,9 @@ sh .osx
 # symlink it up!
 ./symlink-setup.sh
 
-# add manual symlink for .ssh/config and probably .config/fish
 
-###
+### VSCODE SETUP
 ##############################################################################################################
+chmod +x /vscode/setup.sh
+
+./vscode/setup.sh

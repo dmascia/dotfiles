@@ -33,7 +33,7 @@ brew tap homebrew/versions
 brew install bash-completion2
 
 #zsh
-brew install zsh zsh-completions zsh-history-substring-search 
+brew install zsh-completions zsh-history-substring-search 
 
 brew install yarn --without-node
 

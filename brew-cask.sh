@@ -13,9 +13,8 @@ brew tap caskroom/versions
 # daily
 brew cask install lastpass
 
-
 # dev
-brew cask install iterm2-nightly
+brew cask install iterm2
 brew cask install visual-studio-code
 brew cask install atom
 brew cask install imagealpha
