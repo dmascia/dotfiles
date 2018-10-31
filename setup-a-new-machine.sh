@@ -97,11 +97,8 @@ npm install --global trash-cli
 ###
 ##############################################################################################################
 
-
-# speed up git status
-git config status.showuntrackedfiles no
-git update-index --untracked-cache
-
+curl -fLo ~/.local/share/nvim/site/autoload/plug.vim --create-dirs \
+    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 
 # set up osx defaults
 #   maybe something else in here https://github.com/hjuutilainen/dotfiles/blob/master/bin/osx-user-defaults.sh
