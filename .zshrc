@@ -1,9 +1,15 @@
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
 
+export GOPATH="${HOME}/.go"
+export PATH="$PATH:${GOPATH}/bin:${GOROOT}/bin"
 # Path to your oh-my-zsh installation.
-export ZSH=/Users/davemascia/.oh-my-zsh
+export ZSH="/Users/davemascia/.oh-my-zsh"
+export PATH="/Users/davemascia/.homebrew/opt/coreutils/libexec/gnubin:$PATH"
+export PATH="/Users/davemascia/Library/Android/sdk/platform-tools:$PATH"
+export PATH="/Users/davemascia/.homebrew/bin:$PATH"
 
+alias nvim="./nvim-osx64/bin/nvim"
 # Set name of the theme to load. Optionally, if you set this to "random"
 # it'll load a random theme each time that oh-my-zsh is loaded.
 # See https://github.com/robbyrussell/oh-my-zsh/wiki/Themes
@@ -120,3 +126,11 @@ source ~/.bash_profile
 
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+export NVM_DIR="/Users/davemascia/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+fpath=($fpath "/Users/davemascia/.zfunctions")
+
+  # Set Spaceship ZSH as a prompt
+  autoload -U promptinit; promptinit
+  prompt spaceship

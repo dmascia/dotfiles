@@ -22,4 +22,4 @@ brew cask install imageoptim
 
 # browsers
 brew cask install google
-brew cask install firefox
+brew cask install firefox-developer-edition

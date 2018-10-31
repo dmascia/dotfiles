@@ -273,7 +273,7 @@ function buildMasterDockerContainers() {
 		rm -rf /node_modules &&
 		rm -rf package-lock.json &&
 		npm install &&
-		npm update &&
+		ECHO "git pull origin master" && npm update &&
 		docker build -t $dir:l .
 	); done
 }
@@ -330,7 +330,7 @@ function syncCommonLib() {
 
 function syncMessageContractLib() {
 	echo "---rsync---> message_contract_lib/"
-	rsync -ah  --progress  --ignore-times "/Users/davemascia/Documents/dev/message_contract_lib/" "./node_modules/message_contract_lib/" --exclude .git --exclude .gitignore --exclude .DS_Store --exclude test --exclude '*.md' --exclude .idea
+	rsync -rh  --progress  --ignore-times "/Users/davemascia/Documents/dev/message_contract_lib/" "./node_modules/message_contract_lib/" --exclude .git --exclude .gitignore --exclude .DS_Store --exclude test --exclude '*.md' --exclude .idea
 }
 
 function syncServiceFramework() {
