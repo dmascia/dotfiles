@@ -4,12 +4,11 @@
 export GOPATH="${HOME}/.go"
 export PATH="$PATH:${GOPATH}/bin:${GOROOT}/bin"
 # Path to your oh-my-zsh installation.
-export ZSH="/Users/davemascia/.oh-my-zsh"
-export PATH="/Users/davemascia/.homebrew/opt/coreutils/libexec/gnubin:$PATH"
-export PATH="/Users/davemascia/Library/Android/sdk/platform-tools:$PATH"
-export PATH="/Users/davemascia/.homebrew/bin:$PATH"
+export ZSH="/Users/${USER}/.oh-my-zsh"
+export PATH="/Users/${USER}/.homebrew/opt/coreutils/libexec/gnubin:$PATH"
+export PATH="/Users/${USER}/Library/Android/sdk/platform-tools:$PATH"
+export PATH="/Users/${USER}/.homebrew/bin:$PATH"
 
-alias nvim="./nvim-osx64/bin/nvim"
 # Set name of the theme to load. Optionally, if you set this to "random"
 # it'll load a random theme each time that oh-my-zsh is loaded.
 # See https://github.com/robbyrussell/oh-my-zsh/wiki/Themes
