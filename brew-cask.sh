@@ -16,10 +16,12 @@ brew cask install lastpass
 # dev
 brew cask install iterm2
 brew cask install visual-studio-code
-brew cask install atom
 brew cask install imagealpha
 brew cask install imageoptim
 
 # browsers
 brew cask install google
 brew cask install firefox-developer-edition
+
+brew tap caskroom/fonts 
+brew cask install font-fira-code

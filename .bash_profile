@@ -1,6 +1,6 @@
 
 # Add `~/bin` to the `$PATH`
-export PATH="$HOME/bin:/usr/local/sbin:$PATH:$HOME/.homebrew/bin:$HOME/.homebrew/sbin";
+export PATH="$HOME/bin:/usr/local/sbin:$PATH:$HOME/.homebrew/bin:$HOME/.homebrew/sbin:$HOME/friendly";
 
 # Load the shell dotfiles, and then some:
 # * ~/.path can be used to extend `$PATH`.
@@ -25,10 +25,6 @@ shopt -s histappend;
 # Autocorrect typos in path names when using `cd`
 shopt -s cdspell;
 
-for file in ~/.{bash_prompt/}; do
-	[ -r "$file" ] && [ -f "$file" ] && source "$file";
-done;
-unset file;
 
 # Enable some Bash 4 features when possible:
 # * `autocd`, e.g. `**/qux` will enter `./foo/bar/baz/qux`
@@ -102,3 +98,7 @@ complete -W "NSGlobalDomain" defaults;
 
 # Add `killall` tab completion for common apps
 complete -o "nospace" -W "Contacts Calendar Dock Finder Mail Safari iTunes SystemUIServer Terminal Twitter" killall;
+
+ source ~/.git-prompt.sh
+ source ~/.git-completion.bash
+ export  PS1='[\u@\h \W$(__git_ps1 " (%s)")]\$ '

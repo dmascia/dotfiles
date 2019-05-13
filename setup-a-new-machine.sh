@@ -50,8 +50,7 @@ fi
 mkdir $HOME/.homebrew && curl -L https://github.com/mxcl/homebrew/tarball/master | tar xz --strip 1 -C $HOME/.homebrew
 export PATH=$HOME/.homebrew/bin:$HOME/.homebrew/sbin:$PATH
 
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
-
+#
 # install all the things
 ./brew.sh
 ./brew-cask.sh
@@ -59,6 +58,7 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/mas
 ### end of homebrew
 ##############################################################################################################
 
+curl -sS https://raw.githubusercontent.com/jamiew/git-friendly/master/install.sh | bash -s ~/friendly
 
 # install better nanorc config
 # https://github.com/scopatz/nanorc
@@ -100,6 +100,15 @@ npm install --global trash-cli
 curl -fLo ~/.local/share/nvim/site/autoload/plug.vim --create-dirs \
     https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 
+
+
+# https://facebook.github.io/watchman/docs/install.html#mac-os-file-descriptor-limits
+sudo sysctl -w kern.maxfiles=$((10*1024*1024))
+sudo sysctl -w kern.maxfilesperproc=$((1024*1024))
+echo kern.maxfiles=$((10*1024*1024)) | sudo tee -a /etc/sysctl.conf
+echo kern.maxfilesperproc=$((1024*1024)) | sudo tee -a /etc/sysctl.conf
+
+
 # set up osx defaults
 #   maybe something else in here https://github.com/hjuutilainen/dotfiles/blob/master/bin/osx-user-defaults.sh
 sh .osx
@@ -115,8 +124,3 @@ sh .osx
 ./symlink-setup.sh
 
 
-### VSCODE SETUP
-##############################################################################################################
-chmod +x /vscode/setup.sh
-
-./vscode/setup.sh

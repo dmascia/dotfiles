@@ -90,7 +90,7 @@
 # use separate file for username / github token / etc
 [user]
 	name = Dave Mascia
-	email = dave@davemascia.com
+	email = dave.mascia@cardcash.com
 [color "diff-highlight"]
 	oldNormal = red bold
 	oldHighlight = red bold 52
@@ -110,7 +110,6 @@
 [diff]
 	compactionHeuristic = true
 [remote "origin"]
-	fetch = +refs/heads/*:refs/remotes/origin/*
 [stash]
 	showPatch = true
 [log]

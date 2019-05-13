@@ -11,8 +11,6 @@ while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 # Make sure we’re using the latest Homebrew.
 brew update
 
-# Upgrade any already-installed formulae.
-brew upgrade --all
 
 # Install GNU core utilities (those that come with OS X are outdated).
 # Don’t forget to add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
@@ -33,9 +31,8 @@ brew tap homebrew/versions
 brew install bash-completion2
 
 #zsh
-brew install zsh-completions zsh-history-substring-search 
 
-brew install yarn --without-node
+brew install yarn 
 
 
 brew install docker docker-machine docker-compose
@@ -50,61 +47,34 @@ brew install homebrew/dupes/openssh
 brew install homebrew/dupes/screen
 brew install homebrew/php/php56 --with-gmp
 
-# Install font tools.
-brew tap bramstein/webfonttools
-brew install sfnt2woff
-brew install sfnt2woff-zopfli
-brew install woff2
+# mtr - ping & traceroute. best.
+brew install mtr
 
-# Install some CTF tools; see https://github.com/ctfs/write-ups.
+    # allow mtr to run without sudo
+    mtrlocation=$(brew info mtr | grep Cellar | sed -e 's/ (.*//') 
+    sudo chmod 4755 $mtrlocation/sbin/mtr
+    sudo chown root $mtrlocation/sbin/mtr
+
+
+
 brew install aircrack-ng
-brew install bfg
-brew install binutils
-brew install binwalk
-brew install cifer
-brew install dex2jar
-brew install dns2tcp
-brew install fcrackzip
-brew install foremost
-brew install hashpump
-brew install hydra
-brew install john
-brew install knock
-brew install netpbm
-brew install nmap
-brew install pngcheck
-brew install socat
-brew install sqlmap
-brew install tcpflow
-brew install tcpreplay
-brew install tcptrace
-brew install ucspi-tcp # `tcpserver` etc.
-brew install xpdf
-brew install xz
 brew install tmux
-brew install neovim
 brew install the_silver_searcher
-brew install go
-
-# Install other useful binaries.
-brew install ack
-brew install dark-mode
+brew install fzf
 brew install git
-brew install git-lfs
 brew install imagemagick --with-webp
-brew install lua
-brew install lynx
-brew install p7zip
-brew install pigz
+brew install node # This installs `npm` too using the recommended installation method
 brew install pv
 brew install rename
-brew install rhino
-brew install speedtest_cli
-brew install ssh-copy-id
-brew install testssl
 brew install tree
-brew install webkit2png
 brew install zopfli
+brew install ffmpeg --with-libvpx
+brew install neovim
+brew install go
+brew install ack
+brew install terminal-notifier
+brew install android-platform-tools
+brew install pidcat   # colored logcat guy
+brew install ncdu # find where your diskspace went
 brew install ranger
-# Remove outdated versions from the cellar.
 brew cleanup
