@@ -90,7 +90,7 @@
 # use separate file for username / github token / etc
 [user]
 	name = Dave Mascia
-	email = dave.mascia@cardcash.com
+	email = dave@davemascia.com
 [color "diff-highlight"]
 	oldNormal = red bold
 	oldHighlight = red bold 52
