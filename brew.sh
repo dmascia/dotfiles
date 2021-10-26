@@ -1,80 +1,89 @@
-#!/usr/bin/env bash
+	#!/bin/bash
 
-# Install command-line tools using Homebrew.
+# Install command-line tools using Homebrew
 
-# Ask for the administrator password upfront.
-sudo -v
+# (Optionally) Turn off brew's analytics https://docs.brew.sh/Analytics
+# brew analytics off
 
-# Keep-alive: update existing `sudo` time stamp until the script has finished.
-while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
-
-# Make sure we’re using the latest Homebrew.
+# Make sure we’re using the latest Homebrew
 brew update
 
+# Upgrade any already-installed formulae
+brew upgrade
 
-# Install GNU core utilities (those that come with OS X are outdated).
-# Don’t forget to add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
+
+# GNU core utilities (those that come with OS X are outdated)
 brew install coreutils
-sudo ln -s /usr/local/bin/gsha256sum /usr/local/bin/sha256sum
-
-# Install some other useful utilities like `sponge`.
 brew install moreutils
-# Install GNU `find`, `locate`, `updatedb`, and `xargs`, `g`-prefixed.
+# GNU `find`, `locate`, `updatedb`, and `xargs`, `g`-prefixed
 brew install findutils
-# Install GNU `sed`, overwriting the built-in `sed`.
-brew install gnu-sed --with-default-names
-# Install Bash 4.
-# Note: don’t forget to add `/usr/local/bin/bash` to `/etc/shells` before
-# running `chsh`.
-brew install bash
-brew tap homebrew/versions
-brew install bash-completion2
-
-#zsh
-
-brew install yarn 
+# GNU `sed`
+brew install gnu-sed
 
 
-brew install docker docker-machine docker-compose
 
-# Install `wget` with IRI support.
-brew install wget --with-iri
+# Updated shells
+# Note: don’t forget to add `/usr/local/bin/<EACHSHELL>` to `/etc/shells` before running `chsh`.
+brew install fish
+brew install bash-completion@2
 
-# Install more recent versions of some OS X tools.
-brew install vim --override-system-vi
-brew install homebrew/dupes/grep
-brew install homebrew/dupes/openssh
-brew install homebrew/dupes/screen
-brew install homebrew/php/php56 --with-gmp
+
+# Install wget
+brew install wget
+
+# Install more recent versions of some OS X tools
+brew install vim
+brew install nano
+brew install grep
+brew install openssh
+
+# z hopping around folders
+brew install z
+
+# run this script when this file changes guy.
+brew install entr
+
+# github util
+brew install gh
+# nicer git diffs
+brew install git-delta
+brew install git
+
+# better `top`
+brew install glances
+
+brew install shellcheck # linting for .sh files
+
 
 # mtr - ping & traceroute. best.
 brew install mtr
 
     # allow mtr to run without sudo
-    mtrlocation=$(brew info mtr | grep Cellar | sed -e 's/ (.*//') 
+    mtrlocation=$(brew info mtr | grep Cellar | sed -e 's/ (.*//') #  e.g. `/Users/paulirish/.homebrew/Cellar/mtr/0.86`
     sudo chmod 4755 $mtrlocation/sbin/mtr
     sudo chown root $mtrlocation/sbin/mtr
 
 
-
-brew install aircrack-ng
-brew install tmux
-brew install the_silver_searcher
+# Install other useful binaries
+brew install the_silver_searcher # ack is an alternative, tbh i forget which i like more.
 brew install fzf
-brew install git
-brew install imagemagick --with-webp
+
+brew install imagemagick
 brew install node # This installs `npm` too using the recommended installation method
-brew install pv
 brew install rename
 brew install tree
 brew install zopfli
-brew install ffmpeg --with-libvpx
-brew install neovim
-brew install go
-brew install ack
-brew install terminal-notifier
+brew install ffmpeg
+
+# json stuff
+brew install jq gron
+
 brew install android-platform-tools
-brew install pidcat   # colored logcat guy
 brew install ncdu # find where your diskspace went
-brew install ranger
+brew install automake cmake go
+brew install yarn 
+brew install docker docker-machine docker-compose
+
+
+# Remove outdated versions from the cellar
 brew cleanup

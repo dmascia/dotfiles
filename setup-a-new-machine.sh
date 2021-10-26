@@ -90,6 +90,8 @@ npm install -g diff-so-fancy
 # trash as the safe `rm` alternative
 npm install --global trash-cli
 
+npm install -g statikk
+
 # iterm with more margin! http://hackr.it/articles/prettier-gutter-in-iterm-2/
 #   (admittedly not as easy to maintain)
 
@@ -102,11 +104,19 @@ curl -fLo ~/.local/share/nvim/site/autoload/plug.vim --create-dirs \
 
 
 
+# default is (257*1024)
+sudo sysctl kern.maxvnodes=$((512*1024))
+echo kern.maxvnodes=$((512*1024)) | sudo tee -a /etc/sysctl.conf
+
 # https://facebook.github.io/watchman/docs/install.html#mac-os-file-descriptor-limits
 sudo sysctl -w kern.maxfiles=$((10*1024*1024))
 sudo sysctl -w kern.maxfilesperproc=$((1024*1024))
 echo kern.maxfiles=$((10*1024*1024)) | sudo tee -a /etc/sysctl.conf
 echo kern.maxfilesperproc=$((1024*1024)) | sudo tee -a /etc/sysctl.conf
+
+# faster git server communication.
+# like a LOT faster. https://opensource.googleblog.com/2018/05/introducing-git-protocol-version-2.html
+git config protocol.version 2
 
 
 # set up osx defaults
