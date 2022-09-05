@@ -138,15 +138,6 @@ function getcertnames() {
 }
 
 
-# `v` with no arguments opens the current directory in Vim, otherwise opens the
-# given location
-function v() {
-	if [ $# -eq 0 ]; then
-		nvim .;
-	else
-		nvim "$@";
-	fi;
-}
 
 # `o` with no arguments opens the current directory, otherwise opens the given
 # location
@@ -261,4 +252,25 @@ function syncServiceFramework() {
 
 function getTags() {
 	git for-each-ref --sort=taggerdate --format '%(refname) %(taggerdate)' refs/tags
+}
+
+function cardcash() {
+	node /Users/davemascia/Documents/Dev/CC_CLI/index.js $*
+}
+
+function clone() {    
+	gh repo clone $1
+    cd $(basename $1 | sed 's/.git$//')
+    npm install
+}
+
+
+function dropDeps() { 
+    rm -rf node_modules/ package-lock.json && npm i
+}
+
+
+function syncIUFramework() {
+	echo "---rsync---> ccui-framework/"
+	rsync -ah  --progress --ignore-times "/Users/davemascia/Documents/Dev/ccui-framework" "./node_modules/" --exclude .git --exclude .gitignore --exclude .DS_Store --exclude test --exclude '*.md' --exclude .idea
 }
